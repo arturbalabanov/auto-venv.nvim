@@ -41,6 +41,9 @@ local function post_set_venv_hook(bufnr, client, venv)
     vim.cmd(string.format('setlocal textwidth=%s', line_length))
 end
 
+-- TODO: Change this to be applied for every file in the project (e.g. yaml when using a linter installed in the venv)
+--       Obviously it won't use the LSP's on_attach but it should still "edit" the PATH for that buffer only
+
 function M.on_attach(client, bufnr)
     local filetype = vim.api.nvim_buf_get_option(bufnr, "filetype")
 
