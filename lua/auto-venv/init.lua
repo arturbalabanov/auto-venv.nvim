@@ -58,10 +58,7 @@ local function get_venv_name(venv_python_path, project_root)
     return venv_dir_name
 end
 
-local function get_python_version(python_path, opts)
-    -- TODO: replace opts.full_version with a config option
-    opts = apply_defaults(opts, { full_version = false })
-
+local function get_python_version(python_path)
     utils.debug("Python path: " .. python_path)
 
     local py_version_result = vim.system({ python_path, '--version' }, { text = true }):wait()
@@ -76,10 +73,6 @@ local function get_python_version(python_path, opts)
     utils.debug("Python version output: " .. vim.inspect(py_version_result.stdout))
     utils.debug("Python version string: " .. vim.inspect(py_version_string))
 
-    if opts.full_version then
-        return py_version_string
-    end
-
     local _, _, major, minor = string.find(py_version_string, "(%d+).(%d+)")
 
     if minor == nil then
@@ -91,7 +84,7 @@ end
 
 
 local function get_python_venv_no_cache(bufnr, opts)
-    opts = apply_defaults(opts, { venv_manager = nil, full_version = false })
+    opts = apply_defaults(opts, { venv_manager = nil })
 
     local file_path = Path:new(vim.api.nvim_buf_get_name(bufnr))
 
@@ -151,7 +144,7 @@ local function get_python_venv_no_cache(bufnr, opts)
     end
 
 
-    local python_version = get_python_version(python_path, { full_version = opts.full_version })
+    local python_version = get_python_version(python_path)
 
     local pyproject_toml = Path:new(project_root):joinpath('pyproject.toml')
 
@@ -173,7 +166,7 @@ local function get_python_venv_no_cache(bufnr, opts)
 end
 
 function M.get_python_venv(bufnr, opts)
-    opts = apply_defaults(opts, { venv_manager = nil, full_version = false })
+    opts = apply_defaults(opts, { venv_manager = nil })
 
     if bufnr == nil then
         bufnr = vim.api.nvim_get_current_buf()

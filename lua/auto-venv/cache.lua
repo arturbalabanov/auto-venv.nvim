@@ -1,8 +1,6 @@
 -- TODO: probably there is a similar module in plenary (or maybe use buflocal variables)
 --       also look at what pytrize is doing to implement its own cache
 
--- TODO: Also look into snacks.nvim for caching
-
 local M = {}
 
 local apply_defaults = require("plenary.tbl").apply_defaults
