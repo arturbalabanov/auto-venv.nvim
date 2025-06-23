@@ -11,32 +11,32 @@ local function get_builtin_get_python_executable_name()
     return 'python'
 end
 
-M.default_venv_managers = {
-    {
+M.all_venv_managers = {
+    uv = {
         name = 'uv',
         executable_name = 'uv',
         is_managing_proj_func = utils.file_present_in_proj_checker('uv.lock'),
         get_python_path_func = utils.project_local_command_runner({ 'uv', 'python', 'find' }),
     },
-    {
+    pdm = {
         name = "PDM",
         executable_name = 'pdm',
         is_managing_proj_func = utils.file_present_in_proj_checker('pdm.lock'),
         get_python_path_func = utils.project_local_command_runner({ 'pdm', 'venv', '--python', 'in-project' }),
     },
-    {
+    poetry = {
         name = 'Poetry',
         executable_name = 'poetry',
         is_managing_proj_func = utils.file_present_in_proj_checker('poetry.lock'),
         get_python_path_func = utils.project_local_command_runner({ 'poetry', 'env', 'info', '--executable' }),
     },
-    {
+    pipenv = {
         name = "Pipenv",
         executable_name = 'pipenv',
         is_managing_proj_func = utils.file_present_in_proj_checker('Pipfile.lock'),
         get_python_path_func = utils.project_local_command_runner({ 'pipenv', '--py' }),
     },
-    {
+    builtin = {
         name = "Built-in venv manager (python -m venv)",
         executable_name = get_builtin_get_python_executable_name(),
         is_managing_proj_func = utils.file_present_in_proj_checker("requirements.txt"),
@@ -64,23 +64,23 @@ M.default_venv_managers = {
     -- TODO: Add support for conda
 }
 
--- TODO: maybe this should be a config option
-M.enabled_venv_managers = {}
-
--- TODO: clean up this fucking mess
-for _, venv_manager in pairs(M.default_venv_managers) do
-    if vim.fn.executable(venv_manager.executable_name) == 1 then
-        table.insert(M.enabled_venv_managers, venv_manager)
-    end
-end
-
 function M.get_venv_manager(project_root)
-    for _, venv_manager in pairs(M.enabled_venv_managers) do
-        if venv_manager.is_managing_proj_func(project_root) then
+    -- imporing config here to avoid circular dependency issues
+    local config = require('auto-venv.config')
+
+    local enabled_venv_managers = config.get("managers")
+    if enabled_venv_managers == nil or vim.tbl_isempty(enabled_venv_managers) then
+        utils.warn("No venv managers are enabled in the configuration.")
+        return nil
+    end
+
+    for _, venv_manager in pairs(enabled_venv_managers) do
+        if venv_manager ~= nil and venv_manager.is_managing_proj_func(project_root) then
             return venv_manager
         end
     end
 
+    utils.warn("No venv manager found for project root: " .. project_root)
     return nil
 end
 
