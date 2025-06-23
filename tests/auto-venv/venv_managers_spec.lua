@@ -156,7 +156,7 @@ describe("simple usage", function()
 
         vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf(), { fallback_to_system_python = false })
+        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         assert(venv ~= nil, "venv not found")
         assert.equals("uv", venv.venv_manager_name, "venv.manager_name")
@@ -174,7 +174,7 @@ describe("simple usage", function()
 
         vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf(), { fallback_to_system_python = false })
+        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         local get_venv_dir_result = vim.system(
             { "poetry", "env", "info", "--project", project_dir:expand(), "--path" },
@@ -198,7 +198,7 @@ describe("simple usage", function()
 
         vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf(), { fallback_to_system_python = false })
+        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         local get_venv_dir_result = vim.system({ "pipenv", "--venv" }, { text = true, cwd = project_dir:expand() }):wait()
         local expected_venv_dir = Path:new(vim.trim(get_venv_dir_result.stdout))
@@ -219,7 +219,7 @@ describe("simple usage", function()
 
         vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf(), { fallback_to_system_python = false })
+        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         local get_venv_dir_result = vim.system(
             { "pdm", "venv", "--path", "in-project" },
@@ -243,7 +243,7 @@ describe("simple usage", function()
 
         vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf(), { fallback_to_system_python = false })
+        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         assert(venv ~= nil, "venv not found")
         assert.equals("Built-in venv manager (python -m venv)", venv.venv_manager_name, "venv.venv_manager_name")

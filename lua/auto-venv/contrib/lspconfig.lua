@@ -59,7 +59,7 @@ function M.on_attach(client, bufnr)
     local var_name = "py_venv_info"
 
     local found, saved_venv = pcall(vim.api.nvim_buf_get_var, bufnr, var_name)
-    local venv = require("auto-venv").get_python_venv(bufnr, { fallback_to_system_python = true })
+    local venv = require("auto-venv").get_python_venv(bufnr)
 
     -- TODO: Duplication with what we have down
     if venv == nil then
@@ -77,7 +77,7 @@ function M.on_attach(client, bufnr)
         buffer = bufnr,
         callback = function(event)
             found, saved_venv = pcall(vim.api.nvim_buf_get_var, bufnr, var_name)
-            venv = require("auto-venv").get_python_venv(bufnr, { fallback_to_system_python = true })
+            venv = require("auto-venv").get_python_venv(bufnr)
 
             if venv == nil then
                 return

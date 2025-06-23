@@ -91,9 +91,7 @@ end
 
 
 local function get_python_venv_no_cache(bufnr, opts)
-    -- TODO: replace fallback_to_system_python with a config option
-    opts = apply_defaults(opts,
-        { fallback_to_system_python = false, venv_manager = nil, full_version = false })
+    opts = apply_defaults(opts, { venv_manager = nil, full_version = false })
 
     local file_path = Path:new(vim.api.nvim_buf_get_name(bufnr))
 
@@ -111,7 +109,7 @@ local function get_python_venv_no_cache(bufnr, opts)
         opts.venv_manager = venv_managers.get_venv_manager(project_root)
 
         if opts.venv_manager == nil then
-            if not opts.fallback_to_system_python then
+            if not config.get("fallback_to_system_python") then
                 utils.error("No venv was found for " .. project_root .. " and fallback to system python is disabled")
 
                 return nil
@@ -127,17 +125,16 @@ local function get_python_venv_no_cache(bufnr, opts)
     if python_path == nil then
         local msg = "No virtual environment found in " .. project_root
 
-        if opts.fallback_to_system_python then
+        if config.get("fallback_to_system_python") then
             msg = msg .. ", falling back to system python"
         end
 
         utils.warn(msg)
 
-        if not opts.fallback_to_system_python then
+        if not config.get("fallback_to_system_python") then
             return nil
         end
 
-        -- TODO: Don't special-case this and use it the built-in venv manager
         python_path = vim.fn.exepath('python3') or vim.fn.exepath('python') or 'python'
     end
 
@@ -176,7 +173,7 @@ local function get_python_venv_no_cache(bufnr, opts)
 end
 
 function M.get_python_venv(bufnr, opts)
-    opts = apply_defaults(opts, { fallback_to_system_python = false, venv_manager = nil, full_version = false })
+    opts = apply_defaults(opts, { venv_manager = nil, full_version = false })
 
     if bufnr == nil then
         bufnr = vim.api.nvim_get_current_buf()
