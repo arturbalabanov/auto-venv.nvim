@@ -3,17 +3,10 @@
 -- https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md
 -- https://github.com/lunarmodules/luassert
 
-
--- TODO: maybe move (some of) this to the minimal_init.lua
-local project_nvim = require("project_nvim")
-local auto_venv = require("auto-venv")
 local Path = require("plenary.path")
 
-project_nvim.setup({
-    manual_mode = true,
-    detection_methods = { "pattern" },
-    patterns = { ".git", "Makefile", "package.json", "pyproject.toml" },
-})
+-- TODO: maybe move (some of) this to the minimal_init.lua
+local auto_venv = require("auto-venv")
 assert(auto_venv ~= nil, "auto-venv should be loaded")
 auto_venv.setup({ debug = false })
 
@@ -66,7 +59,7 @@ local function setup_project(venv_manager_name, project_type)
         return
     end
 
-    -- TODO: Remove git init as it's a hack to get arround project.nvim detection
+    -- TODO: Remove git init as it's a hack to get arround the project root detection
     table.insert(setup_project_cmds, { 'git', 'init' })
 
     local project_dir = get_project_dir(venv_manager_name, project_type)

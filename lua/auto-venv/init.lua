@@ -1,12 +1,5 @@
 local M = {}
 
--- TODO: Remove the dependancy on project_nvim (if possible), or at least make it optional
-local status_ok, project_nvim = pcall(require, "project_nvim.project")
-if not status_ok then
-    error("project_nvim is not installed, please install it to use auto-venv", vim.log.levels.ERROR)
-    return nil
-end
-
 local Path = require("plenary.path")
 local apply_defaults = require("plenary.tbl").apply_defaults
 
@@ -96,12 +89,23 @@ local function get_python_version(python_path, opts)
     return major .. '.' .. minor
 end
 
-local function get_python_venv_no_cache(opts)
+
+local function get_python_venv_no_cache(bufnr, opts)
     -- TODO: replace fallback_to_system_python with a config option
     opts = apply_defaults(opts,
         { fallback_to_system_python = false, venv_manager = nil, full_version = false })
 
-    local project_root = project_nvim.find_pattern_root()
+    local file_path = Path:new(vim.api.nvim_buf_get_name(bufnr))
+
+    -- TODO: make this configurable and probably move to the venv managers, also make it independent of git
+    local git_dir = file_path:find_upwards('.git')
+
+    if git_dir == nil then
+        utils.error("No .git directory found for " .. file_path:expand())
+        return nil
+    end
+
+    local project_root = git_dir:parent():expand()
 
     if opts.venv_manager == nil then
         opts.venv_manager = venv_managers.get_venv_manager(project_root)
@@ -179,7 +183,7 @@ function M.get_python_venv(bufnr, opts)
     end
 
     -- TODO: oook, this definitely should be a buffer-local variable. and is?
-    return cache.get_or_update('get_python_venv', bufnr, function() return get_python_venv_no_cache(opts) end)
+    return cache.get_or_update('get_python_venv', bufnr, function() return get_python_venv_no_cache(bufnr, opts) end)
 end
 
 -- TODO: rename me to env_local_command_path or something similar
