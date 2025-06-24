@@ -59,9 +59,6 @@ local function setup_project(venv_manager_name, project_type)
         return
     end
 
-    -- TODO: Remove git init as it's a hack to get arround the project root detection
-    table.insert(setup_project_cmds, { 'git', 'init' })
-
     local project_dir = get_project_dir(venv_manager_name, project_type)
 
     if project_dir:exists() then

@@ -11,13 +11,6 @@ local function get_builtin_get_python_executable_name()
     return 'python'
 end
 
-local file_present_in_proj_checker = function(file_name)
-    return function(project_root)
-        local match = vim.fn.glob(Path:new(project_root):joinpath(file_name):expand())
-        return match ~= ''
-    end
-end
-
 local project_local_command_runner = function(cmd)
     return function(project_root)
         local result = vim.system(cmd, { text = true, cwd = project_root }):wait()
@@ -34,31 +27,31 @@ M.all_venv_managers = {
     uv = {
         name = 'uv',
         executable_name = 'uv',
-        is_managing_proj_func = file_present_in_proj_checker('uv.lock'),
+        project_root_file = 'uv.lock',
         get_python_path_func = project_local_command_runner({ 'uv', 'python', 'find' }),
     },
     pdm = {
         name = "PDM",
         executable_name = 'pdm',
-        is_managing_proj_func = file_present_in_proj_checker('pdm.lock'),
+        project_root_file = 'pdm.lock',
         get_python_path_func = project_local_command_runner({ 'pdm', 'venv', '--python', 'in-project' }),
     },
     poetry = {
         name = 'Poetry',
         executable_name = 'poetry',
-        is_managing_proj_func = file_present_in_proj_checker('poetry.lock'),
+        project_root_file = 'poetry.lock',
         get_python_path_func = project_local_command_runner({ 'poetry', 'env', 'info', '--executable' }),
     },
     pipenv = {
         name = "Pipenv",
         executable_name = 'pipenv',
-        is_managing_proj_func = file_present_in_proj_checker('Pipfile.lock'),
+        project_root_file = 'Pipfile.lock',
         get_python_path_func = project_local_command_runner({ 'pipenv', '--py' }),
     },
     builtin = {
         name = "Built-in venv manager (python -m venv)",
         executable_name = get_builtin_get_python_executable_name(),
-        is_managing_proj_func = file_present_in_proj_checker("requirements.txt"),
+        project_root_file = "requirements.txt",
         get_python_path_func = function(project_root)
             for _, expected_dir_name in ipairs({ '.venv', 'venv', }) do
                 local venv_path = Path:new(project_root):joinpath(expected_dir_name)
@@ -83,24 +76,37 @@ M.all_venv_managers = {
     -- TODO: Add support for conda
 }
 
-function M.get_venv_manager(project_root)
+function M.get_venv_manager(file_path)
     -- imporing config here to avoid circular dependency issues
     local config = require('auto-venv.config')
 
     local enabled_venv_managers = config.get("managers")
     if enabled_venv_managers == nil or vim.tbl_isempty(enabled_venv_managers) then
         utils.warn("No venv managers are enabled in the configuration.")
-        return nil
+        return nil, nil
     end
 
-    for _, venv_manager in pairs(enabled_venv_managers) do
-        if venv_manager ~= nil and venv_manager.is_managing_proj_func(project_root) then
-            return venv_manager
+    -- TODO: extract max_depth into a config option
+    local max_depth = 10 -- necessary to avoid potential infinite loops caused by circular symlinks
+    local depth = 0
+
+    local potential_project_root = Path:new(file_path)
+    while depth < max_depth do
+        potential_project_root = potential_project_root:parent()
+        depth = depth + 1
+
+        for _, venv_manager in pairs(enabled_venv_managers) do
+            if venv_manager ~= nil then
+                if potential_project_root:joinpath(venv_manager.project_root_file):exists() then
+                    -- TODO: don't return two values, split it into seperate functions instead
+                    return potential_project_root:expand(), venv_manager
+                end
+            end
         end
     end
 
-    utils.warn("No venv manager found for project root: " .. project_root)
-    return nil
+    utils.warn("No venv manager found for file: " .. file_path)
+    return nil, nil
 end
 
 return M
