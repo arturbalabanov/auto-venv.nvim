@@ -86,13 +86,23 @@ end
 local function get_python_venv_no_cache(bufnr, opts)
     opts = apply_defaults(opts, { venv_manager = nil })
 
-    local file_path = Path:new(vim.api.nvim_buf_get_name(bufnr))
+    local file_path = vim.api.nvim_buf_get_name(bufnr)
+
+    if file_path == nil or file_path == '' then
+        -- This happens if the buffer is not saved to a file yet
+        -- or it's not associated with a file (e.g. a file tree)
+
+        -- TODO: Maybe it should fallback to the current working directory?
+        --       But only for some buftypes (e.g. not for a file tree, etc.)
+        utils.info("No file path found for buffer " .. bufnr .. ", cannot determine venv")
+        return nil
+    end
 
     -- TODO: make this configurable and probably move to the venv managers, also make it independent of git
-    local git_dir = file_path:find_upwards('.git')
+    local git_dir = Path:new(file_path):find_upwards('.git')
 
     if git_dir == nil then
-        utils.error("No .git directory found for " .. file_path:expand())
+        utils.error("No .git directory found for " .. file_path)
         return nil
     end
 

@@ -254,4 +254,31 @@ describe("simple usage", function()
         assert_path_equals(project_dir:joinpath(".venv", "bin", "python"), venv.python_path, "venv.python_path")
         assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml")
     end)
+
+    it("applies venv to new python files", function()
+        local project_dir = get_project_dir("builtin", "app")
+        local file_path = project_dir:joinpath("new_file.py")
+        assert.is.False(file_path:exists(), "new_file.py should not exist yet")
+
+        vim.cmd("e " .. file_path:expand())
+        local bufnr = vim.api.nvim_get_current_buf()
+
+        assert.equals(vim.api.nvim_buf_get_name(bufnr), file_path:expand(), "Buffer name should match the new file path")
+
+        local venv = auto_venv.get_python_venv(bufnr)
+
+        assert(venv ~= nil, "venv not found")
+        assert.equals("Built-in venv manager (python -m venv)", venv.venv_manager_name, "venv.venv_manager_name")
+        assert.equals("app", venv.name, "venv.name")
+        assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
+    end)
+
+    it("doesn't apply venv to a new unnamed file", function()
+        vim.cmd.tabnew() -- Open a new unnamed buffer
+        local bufnr = vim.api.nvim_get_current_buf()
+        assert.equals(vim.api.nvim_buf_get_name(bufnr), "", "current buffer should not have a name")
+
+        local venv = auto_venv.get_python_venv(bufnr)
+        assert.is.Nil(venv, "venv should be nil for unnamed buffers")
+    end)
 end)

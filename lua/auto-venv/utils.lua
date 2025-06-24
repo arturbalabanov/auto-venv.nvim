@@ -30,6 +30,13 @@ M.debug = function(msg)
     end
 end
 
+M.info = function(msg)
+    -- importing here instead at top level to avoid circular dependency
+    if require('auto-venv.config').get("debug") then
+        print(msg)
+    end
+end
+
 M.warn = function(msg)
     if require('auto-venv.config').get("enable_notifications") then
         vim.notify(string.format("auto-venv.nvim: %s", msg), vim.log.levels.WARN)
