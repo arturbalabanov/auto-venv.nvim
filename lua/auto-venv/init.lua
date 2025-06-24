@@ -87,6 +87,15 @@ local function get_python_venv_no_cache(bufnr, opts)
     opts = apply_defaults(opts, { venv_manager = nil })
 
     local file_path = vim.api.nvim_buf_get_name(bufnr)
+    local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+
+    -- TODO: make this a config option
+    if buftype == 'nofile' or buftype == 'nowrite' or buftype == 'prompt' then
+        -- This is a special buffer type, e.g. a file tree, etc.
+        -- it doesn't make sense to set a venv for it
+        utils.debug("Buffer " .. bufnr .. " is of type '" .. buftype .. "', ignoring it for venv detection")
+        return nil
+    end
 
     if file_path == nil or file_path == '' then
         -- This happens if the buffer is not saved to a file yet
@@ -94,7 +103,7 @@ local function get_python_venv_no_cache(bufnr, opts)
 
         -- TODO: Maybe it should fallback to the current working directory?
         --       But only for some buftypes (e.g. not for a file tree, etc.)
-        utils.info("No file path found for buffer " .. bufnr .. ", cannot determine venv")
+        utils.debug("No file path found for buffer " .. bufnr .. ", cannot determine venv")
         return nil
     end
 

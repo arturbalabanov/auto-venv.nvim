@@ -281,4 +281,16 @@ describe("simple usage", function()
         local venv = auto_venv.get_python_venv(bufnr)
         assert.is.Nil(venv, "venv should be nil for unnamed buffers")
     end)
+
+    it("doesn't apply venv to nofile buffers", function()
+        local project_dir = get_project_dir("builtin", "app")
+        local file_path = project_dir:joinpath("some_name")
+        vim.cmd.tabnew(file_path:expand())                  -- open a new buffer with a name
+        vim.api.nvim_buf_set_option(0, 'buftype', 'nofile') -- Set the buffer type to nofile
+        local bufnr = vim.api.nvim_get_current_buf()
+        assert.equals(vim.api.nvim_buf_get_name(bufnr), file_path:expand(), "current buffer should have a name")
+
+        local venv = auto_venv.get_python_venv(bufnr)
+        assert.is.Nil(venv, "venv should be nil for nofile buffers")
+    end)
 end)
