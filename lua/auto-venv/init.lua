@@ -88,6 +88,7 @@ local function get_python_venv_no_cache(bufnr, opts)
 
     local file_path = vim.api.nvim_buf_get_name(bufnr)
     local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+    local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
 
     -- TODO: make this a config option
     if buftype == 'nofile' or buftype == 'nowrite' or buftype == 'prompt' then
@@ -104,6 +105,14 @@ local function get_python_venv_no_cache(bufnr, opts)
         -- TODO: Maybe it should fallback to the current working directory?
         --       But only for some buftypes (e.g. not for a file tree, etc.)
         utils.debug("No file path found for buffer " .. bufnr .. ", cannot determine venv")
+        return nil
+    end
+
+    if filetype ~= 'python' then
+        -- only apply venv detection for Python files
+        -- TODO: this is a hack to cover annoying edge cases (e.g. git commits), ideally it should be
+        --       applied to any file in the project (e.g. yaml files) as they can still depend on the venv
+        utils.debug("Buffer " .. bufnr .. " is of type '" .. filetype .. "', ignoring it for venv detection")
         return nil
     end
 
