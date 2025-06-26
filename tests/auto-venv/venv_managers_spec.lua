@@ -28,7 +28,7 @@ local function setup_project(venv_manager_name, project_type)
 
     if venv_manager_name == "uv" then
         setup_project_cmds = {
-            { 'uv', 'init' },
+            { 'uv', 'init', '--vcs', 'none' },
             { 'uv', 'sync' },
         }
     elseif venv_manager_name == "poetry" then

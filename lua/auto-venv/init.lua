@@ -120,6 +120,8 @@ local function get_python_venv_no_cache(bufnr)
         end
     end
 
+    -- TODO: Cache the project root and use the filename to retrieve it (i.e. return the first entry from the cache which is
+    --       a valid prefix of the file path, sorted by length!
     local venv_python_path = M.get_project_venv_python_path(project_root, venv_manager)
     local python_path = venv_python_path
 
