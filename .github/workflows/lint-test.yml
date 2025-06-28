@@ -28,6 +28,14 @@ jobs:
         with:
           neovim: true
           version: ${{ matrix.nvim-versions }}
+          
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install venv managers
+        run: pip install pipenv pdm uv poetry
 
       - name: run tests
         run: make test
