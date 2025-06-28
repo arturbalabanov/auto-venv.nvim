@@ -155,32 +155,6 @@ local assert_path_equals = function(expected, actual, msg, opts)
     assert.equals(expected, actual, make_assert_msg(msg, "paths are not equal"))
 end
 
-local function get_python_version(project_dir, venv_python_path)
-    local python_version_res = vim.system({ venv_python_path, "--version" }, { text = true }):wait()
-
-    if python_version_res.code ~= 0 then
-        error("Failed to get Python version: " .. python_version_res.stderr)
-    end
-
-    local actual_python_version = python_version_res.stdout:match("Python%s+(%d+%.%d+)")
-
-    local pin_python_version_file = project_dir:joinpath(".python-version")
-
-    if not pin_python_version_file:exists() then
-        return actual_python_version
-    end
-
-    local pinned_python_version = vim.trim(pin_python_version_file:read())
-
-    assert.equals(
-        pinned_python_version,
-        actual_python_version,
-        "Python version in .python-version file does not match the actual Python version"
-    )
-
-    return actual_python_version
-end
-
 describe("venv manager detection", function()
     for venv_manager_id, venv_manager in pairs(venv_managers.all_venv_managers) do
         it("works in " .. venv_manager_id .. " app project", function()
