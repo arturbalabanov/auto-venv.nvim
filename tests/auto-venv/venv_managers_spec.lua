@@ -128,12 +128,12 @@ end
 
 local assert_path_equals = function(expected, actual, msg)
     if expected == nil then
-        assert(actual == nil, make_assert_msg(msg, "expected path is nil but actual is not"))
+        assert.is.Nil(actual, make_assert_msg(msg, "expected path is nil but actual is not"))
         return
     end
 
-    assert(actual ~= nil, make_assert_msg(msg, "actual path is nil"))
-    assert(expected ~= nil, make_assert_msg(msg, "expected path is nil"))
+    assert.is.Not.Nil(actual, make_assert_msg(msg, "actual path is nil"))
+    assert.is.Not.Nil(expected, make_assert_msg(msg, "expected path is nil"))
 
     if type(actual) == "string" then
         actual = Path:new(actual)
@@ -146,7 +146,23 @@ local assert_path_equals = function(expected, actual, msg)
     assert.equals(expected:expand(), actual:expand(), make_assert_msg(msg, "paths are not equal"))
 end
 
-describe("simple usage", function()
+local function get_python_version(project_dir, venv_python_path)
+    local pin_python_version_file = project_dir:joinpath(".python-version")
+
+    if pin_python_version_file:exists() then
+        return vim.trim(pin_python_version_file:read())
+    end
+
+    local python_version_res = vim.system({ venv_python_path, "--version" }, { text = true }):wait()
+
+    if python_version_res.code ~= 0 then
+        error("Failed to get Python version: " .. python_version_res.stderr)
+    end
+
+    return python_version_res.stdout:match("Python%s+(%d+%.%d+)")
+end
+
+describe("venv manager detection", function()
     it("works in uv app project", function()
         local project_dir = get_project_dir("uv", "app")
         local main_py_path = project_dir:joinpath("main.py"):expand()
@@ -157,12 +173,14 @@ describe("simple usage", function()
 
         assert(venv ~= nil, "venv not found")
         assert.equals("uv", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("3.13", venv.python_version, "venv.python_version")
+        -- TODO: Add project_dir assertion to the other venv manager tests
+        -- assert.equals(project_dir:expand(), venv.project_path, "venv.project_path")
         assert.equals("app", venv.name, "venv.name")
         assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
         assert_path_equals(project_dir:joinpath(".venv", "bin"), venv.bin_path, "venv.bin_path")
         assert_path_equals(project_dir:joinpath(".venv", "bin", "python3"), venv.python_path, "venv.python_path")
         assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
+        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
     end)
 
     it("works in poetry app project", function()
@@ -174,19 +192,24 @@ describe("simple usage", function()
         local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
         local get_venv_dir_result = vim.system(
-            { "poetry", "env", "info", "--project", project_dir:expand(), "--path" },
-            { text = true }
+            { "poetry", "env", "info", "--path" },
+            { text = true, cwd = project_dir:expand() }
         ):wait()
+
+        if get_venv_dir_result.code ~= 0 then
+            error("Failed to get Poetry venv directory: " .. get_venv_dir_result.stderr)
+        end
+
         local expected_venv_dir = Path:new(vim.trim(get_venv_dir_result.stdout))
 
         assert(venv ~= nil, "venv not found")
         assert.equals("Poetry", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("3.13", venv.python_version, "venv.python_version")
         assert.equals(vim.fn.fnamemodify(expected_venv_dir:expand(), ":t"), venv.name, "venv.name")
         assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
         assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
         assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
         assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
+        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
     end)
 
     it("works in pipenv app project", function()
@@ -202,12 +225,12 @@ describe("simple usage", function()
 
         assert(venv ~= nil, "venv not found")
         assert.equals("Pipenv", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("3.12", venv.python_version, "venv.python_version")
         assert.equals("app", venv.name, "venv.name")
         assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
         assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
         assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
         assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml")
+        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
     end)
 
     it("works in pdm app project", function()
@@ -226,12 +249,12 @@ describe("simple usage", function()
 
         assert(venv ~= nil, "venv not found")
         assert.equals("PDM", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("3.12", venv.python_version, "venv.python_version")
         assert.equals("app", venv.name, "venv.name")
         assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
         assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
         assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
         assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
+        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
     end)
 
     it("works in builtin app project", function()
@@ -244,15 +267,17 @@ describe("simple usage", function()
 
         assert(venv ~= nil, "venv not found")
         assert.equals("Built-in venv manager (python -m venv)", venv.venv_manager_name, "venv.venv_manager_name")
-        assert.equals("3.9", venv.python_version, "venv.python_version")
         assert.equals("app", venv.name, "venv.name")
         assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
         assert_path_equals(project_dir:joinpath(".venv", "bin"), venv.bin_path, "venv.bin_path")
         assert_path_equals(project_dir:joinpath(".venv", "bin", "python"), venv.python_path, "venv.python_path")
         assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml")
+        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
     end)
+end)
 
-    it("applies venv to new python files", function()
+describe("venv file detection", function()
+    it("is applied for new python files", function()
         local project_dir = get_project_dir("builtin", "app")
         local file_path = project_dir:joinpath("new_file.py")
         assert.is.False(file_path:exists(), "new_file.py should not exist yet")
@@ -270,7 +295,7 @@ describe("simple usage", function()
         assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
     end)
 
-    it("doesn't apply venv to a new unnamed file", function()
+    it("is not applied for a new unnamed file", function()
         vim.cmd.tabnew() -- Open a new unnamed buffer
         local bufnr = vim.api.nvim_get_current_buf()
         assert.equals(vim.api.nvim_buf_get_name(bufnr), "", "current buffer should not have a name")
@@ -279,7 +304,7 @@ describe("simple usage", function()
         assert.is.Nil(venv, "venv should be nil for unnamed buffers")
     end)
 
-    it("doesn't apply venv to nofile buffers", function()
+    it("is not applied for nofile buffers", function()
         local project_dir = get_project_dir("builtin", "app")
         local file_path = project_dir:joinpath("some_name.py")
         vim.cmd.tabnew(file_path:expand())                  -- open a new buffer with a name
@@ -291,7 +316,8 @@ describe("simple usage", function()
         assert.is.Nil(venv, "venv should be nil for nofile buffers")
     end)
 
-    it("doesn't apply venv to non-python files", function()
+    -- TODO: Eventually we want to remove this test as we want to still apply the venv for non-python files
+    it("is not applied for non-python files", function()
         local project_dir = get_project_dir("builtin", "app")
         local file_path = project_dir:joinpath("some_name.lua")
         vim.cmd.edit(file_path:expand())
