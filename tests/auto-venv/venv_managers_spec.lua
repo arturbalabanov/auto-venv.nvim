@@ -147,19 +147,29 @@ local assert_path_equals = function(expected, actual, msg)
 end
 
 local function get_python_version(project_dir, venv_python_path)
-    local pin_python_version_file = project_dir:joinpath(".python-version")
-
-    if pin_python_version_file:exists() then
-        return vim.trim(pin_python_version_file:read())
-    end
-
     local python_version_res = vim.system({ venv_python_path, "--version" }, { text = true }):wait()
 
     if python_version_res.code ~= 0 then
         error("Failed to get Python version: " .. python_version_res.stderr)
     end
 
-    return python_version_res.stdout:match("Python%s+(%d+%.%d+)")
+    local actual_python_version = python_version_res.stdout:match("Python%s+(%d+%.%d+)")
+
+    local pin_python_version_file = project_dir:joinpath(".python-version")
+
+    if not pin_python_version_file:exists() then
+        return actual_python_version
+    end
+
+    local pinned_python_version = vim.trim(pin_python_version_file:read())
+
+    assert.equals(
+        pinned_python_version,
+        actual_python_version,
+        "Python version in .python-version file does not match the actual Python version"
+    )
+
+    return actual_python_version
 end
 
 describe("venv manager detection", function()
