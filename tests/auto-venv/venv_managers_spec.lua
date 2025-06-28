@@ -192,25 +192,29 @@ describe("venv manager detection", function()
             local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
             assert(venv ~= nil, "venv not found")
-            assert.equals(venv_manager.name, venv.venv_manager_name, "venv.venv_manager_name matches the expected name")
+            assert.equals(venv_manager.name, venv.venv_manager_name,
+                "venv.venv_manager_name doesn't match the expected name")
 
-            assert.equals(project_dir:expand(), venv.project_root, "venv.project_root matches the project directory")
+            assert.equals(project_dir:expand(), venv.project_root,
+                "venv.project_root doesn't match the project directory")
 
             -- NOTE: poetry names its virtual enviroments like this: app-oFWtJehf-py3.11, thus the weird check bellow
             --       we need to add a poetry-specific test to check for that but for now checking that it starts with
             --       app is good enough
-            assert.equals("app", venv.name:match("^(app).*$"), "venv.name")
+            assert.equals("app", venv.name:match("^(app).*$"), "venv.name doesn't match the expected name")
 
             local actual_venv_path = Path:new(venv.venv_path)
-            assert.is.True(actual_venv_path:exists() and actual_venv_path:is_dir(), "venv.venv_path is a valid directory")
+            assert.is.True(actual_venv_path:exists() and actual_venv_path:is_dir(),
+                "venv.venv_path is not a valid directory")
 
             local actual_bin_path = Path:new(venv.bin_path)
             assert_path_equals(actual_venv_path:joinpath("bin"), venv.bin_path,
                 "venv.bin_path is a subdirectory of venv_path")
-            assert.is.True(actual_bin_path:exists() and actual_bin_path:is_dir(), "venv.bin_path is a valid directory")
+            assert.is.True(actual_bin_path:exists() and actual_bin_path:is_dir(),
+                "venv.bin_path is not a valid directory")
 
             assert_path_equals(actual_venv_path:joinpath("bin", "python"), venv.python_path,
-                "venv.python_path matches the bin/python path in the venv",
+                "venv.python_path doesn't match the bin/python path in the venv",
                 { follow_symlinks = true })
 
             local pyproject_toml = project_dir:joinpath("pyproject.toml")
@@ -219,11 +223,30 @@ describe("venv manager detection", function()
                 assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml should be nil as pyproject.toml does not exist")
             else
                 assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml,
-                    "venv.pyproject_toml matches the pyproject.toml in the project")
+                    "venv.pyproject_toml doesn't match the pyproject.toml file in the project")
             end
 
-            assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version,
-                "venv.python_version is correct")
+            local python_version_res = vim.system({ venv.python_path, "--version" }, { text = true }):wait()
+
+            if python_version_res.code ~= 0 then
+                error("Failed to get Python version: " .. python_version_res.stderr)
+            end
+
+            local actual_python_version = python_version_res.stdout:match("Python%s+(%d+%.%d+)")
+
+            assert.equals(actual_python_version, venv.python_version,
+                "venv.python_version doesn't match the version of the python binary")
+
+            local pin_python_version_file = project_dir:joinpath(".python-version")
+
+            if pin_python_version_file:exists() then
+                local pinned_python_version = vim.trim(pin_python_version_file:read())
+                assert.equals(
+                    pinned_python_version,
+                    venv.python_version,
+                    "Contents of .python-version file does not match venv.python_version"
+                )
+            end
         end)
     end
 end)
