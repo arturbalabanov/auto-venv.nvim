@@ -3,6 +3,8 @@
 -- https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md
 -- https://github.com/lunarmodules/luassert
 
+-- TODO: remove plenary dependancy for running tests and use this instead: https://mrcjkb.dev/posts/2023-06-06-luarocks-test.html
+
 local Path = require("plenary.path")
 
 -- TODO: maybe move (some of) this to the minimal_init.lua
