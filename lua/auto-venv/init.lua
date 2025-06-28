@@ -166,6 +166,7 @@ local function get_python_venv_no_cache(bufnr)
 
     return {
         name = get_venv_name(venv_python_path, project_root),
+        project_root = project_root,
         venv_path = venv_path,
         bin_path = venv_bin_path,
         python_path = python_path,

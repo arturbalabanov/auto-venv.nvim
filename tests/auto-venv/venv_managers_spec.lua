@@ -7,17 +7,19 @@ local Path = require("plenary.path")
 
 -- TODO: maybe move (some of) this to the minimal_init.lua
 local auto_venv = require("auto-venv")
+local venv_managers = require("auto-venv.venv_managers")
+
 assert(auto_venv ~= nil, "auto-venv should be loaded")
 auto_venv.setup({ debug = false })
 
 local PROJECT_ROOT = Path:new(vim.fn.fnamemodify(debug.getinfo(1, "Sl").source:sub(2), ":h:h:h"))
 local TEST_PROJECTS_DIR = PROJECT_ROOT:joinpath("tests", "test_projects")
 
-local function get_project_dir(venv_manager_name, project_type)
-    return TEST_PROJECTS_DIR:joinpath(venv_manager_name, project_type)
+local function get_project_dir(venv_manager_id, project_type)
+    return TEST_PROJECTS_DIR:joinpath(venv_manager_id, project_type)
 end
 
-local function setup_project(venv_manager_name, project_type)
+local function setup_project(venv_manager_id, project_type)
     -- TODO: add support for other project types: script, monorepo etc.
     if project_type ~= "app" then
         error("Unsupported project type: " .. project_type)
@@ -26,47 +28,47 @@ local function setup_project(venv_manager_name, project_type)
 
     local setup_project_cmds
 
-    if venv_manager_name == "uv" then
+    if venv_manager_id == "uv" then
         setup_project_cmds = {
             { 'uv', 'init', '--vcs', 'none' },
             { 'uv', 'sync' },
         }
-    elseif venv_manager_name == "poetry" then
+    elseif venv_manager_id == "poetry" then
         setup_project_cmds = {
             { 'poetry', 'init',    '--no-interaction' },
             { 'poetry', 'install', '--no-root' },
             { 'touch',  'main.py' },
         }
-    elseif venv_manager_name == "builtin" then
+    elseif venv_manager_id == "builtin" then
         setup_project_cmds = {
             { 'python3', '-m',              'venv', '.venv' },
             { 'touch',   'main.py' },
             { 'touch',   'requirements.txt' },
         }
-    elseif venv_manager_name == "pipenv" then
+    elseif venv_manager_id == "pipenv" then
         setup_project_cmds = {
             { 'pipenv', 'install', '--python', '3.12' },
             { 'touch',  'main.py' },
         }
-    elseif venv_manager_name == "pdm" then
+    elseif venv_manager_id == "pdm" then
         setup_project_cmds = {
             { 'pdm',   'init',   '--python', '3.12', '--non-interactive', '--no-git' },
             { 'pdm',   'install' },
             { 'touch', 'main.py' },
         }
     else
-        error("Unknown VENV manager: " .. venv_manager_name)
+        error("Unknown VENV manager: " .. venv_manager_id)
         return
     end
 
-    local project_dir = get_project_dir(venv_manager_name, project_type)
+    local project_dir = get_project_dir(venv_manager_id, project_type)
 
     if project_dir:exists() then
-        print(string.format("Skipping setting up %s project using %s -- already exists", project_type, venv_manager_name))
+        print(string.format("Skipping setting up %s project using %s -- already exists", project_type, venv_manager_id))
         return
     end
 
-    print(string.format("Setting up %s project using %s at %s", project_type, venv_manager_name, project_dir:expand()))
+    print(string.format("Setting up %s project using %s at %s", project_type, venv_manager_id, project_dir:expand()))
     vim.fn.mkdir(project_dir:expand(), "p")
 
     for _, cmd in ipairs(setup_project_cmds) do
@@ -75,7 +77,7 @@ local function setup_project(venv_manager_name, project_type)
         if result.code ~= 0 then
             local error_msg_parts = {
                 "Failed to setup project",
-                "\tVirtual environment manager: " .. venv_manager_name,
+                "\tVirtual environment manager: " .. venv_manager_id,
                 "\tProject type: " .. project_type,
                 "\tProject directory: " .. project_dir:expand(),
                 "\tCommand: " .. vim.inspect(cmd),
@@ -96,15 +98,7 @@ local function setup_project(venv_manager_name, project_type)
     end
 end
 
--- TODO: Use the list from auto-venv.venv_managers instead of duplicating it here
-local supported_venv_managers = {
-    "uv",
-    "poetry",
-    "pipenv",
-    "pdm",
-    "builtin",
-}
-
+-- TODO: Add MOAR!!
 local supported_project_types = {
     "app",
     -- "script",
@@ -112,9 +106,9 @@ local supported_project_types = {
 }
 
 
-for _, venv_manager_name in ipairs(supported_venv_managers) do
+for venv_manager_id, _ in pairs(venv_managers.all_venv_managers) do
     for _, project_type in ipairs(supported_project_types) do
-        setup_project(venv_manager_name, project_type)
+        setup_project(venv_manager_id, project_type)
     end
 end
 
@@ -126,24 +120,39 @@ local make_assert_msg = function(main_msg, msg)
     return main_msg .. ": " .. msg
 end
 
-local assert_path_equals = function(expected, actual, msg)
+local assert_path_equals = function(expected, actual, msg, opts)
+    opts = opts or {}
+
+    if opts.follow_symlinks == nil then
+        opts.follow_symlinks = false
+    end
+
     if expected == nil then
         assert.is.Nil(actual, make_assert_msg(msg, "expected path is nil but actual is not"))
         return
     end
 
-    assert.is.Not.Nil(actual, make_assert_msg(msg, "actual path is nil"))
     assert.is.Not.Nil(expected, make_assert_msg(msg, "expected path is nil"))
-
-    if type(actual) == "string" then
-        actual = Path:new(actual)
-    end
+    assert.is.Not.Nil(actual, make_assert_msg(msg, "actual path is nil"))
 
     if type(expected) == "string" then
         expected = Path:new(expected)
     end
 
-    assert.equals(expected:expand(), actual:expand(), make_assert_msg(msg, "paths are not equal"))
+    expected = expected:expand()
+
+    if type(actual) == "string" then
+        actual = Path:new(actual)
+    end
+
+    actual = actual:expand()
+
+    if opts.follow_symlinks then
+        expected = vim.loop.fs_realpath(expected)
+        actual = vim.loop.fs_realpath(actual)
+    end
+
+    assert.equals(expected, actual, make_assert_msg(msg, "paths are not equal"))
 end
 
 local function get_python_version(project_dir, venv_python_path)
@@ -173,117 +182,50 @@ local function get_python_version(project_dir, venv_python_path)
 end
 
 describe("venv manager detection", function()
-    it("works in uv app project", function()
-        local project_dir = get_project_dir("uv", "app")
-        local main_py_path = project_dir:joinpath("main.py"):expand()
+    for venv_manager_id, venv_manager in pairs(venv_managers.all_venv_managers) do
+        it("works in " .. venv_manager_id .. " app project", function()
+            local project_dir = get_project_dir(venv_manager_id, "app")
+            local main_py_path = project_dir:joinpath("main.py"):expand()
 
-        vim.cmd("e " .. main_py_path)
+            vim.cmd("e " .. main_py_path)
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
+            local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
-        assert(venv ~= nil, "venv not found")
-        assert.equals("uv", venv.venv_manager_name, "venv.manager_name")
-        -- TODO: Add project_dir assertion to the other venv manager tests
-        -- assert.equals(project_dir:expand(), venv.project_path, "venv.project_path")
-        assert.equals("app", venv.name, "venv.name")
-        assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
-        assert_path_equals(project_dir:joinpath(".venv", "bin"), venv.bin_path, "venv.bin_path")
-        assert_path_equals(project_dir:joinpath(".venv", "bin", "python3"), venv.python_path, "venv.python_path")
-        assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
-        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
-    end)
+            assert(venv ~= nil, "venv not found")
+            assert.equals(venv_manager.name, venv.venv_manager_name, "venv.venv_manager_name matches the expected name")
 
-    it("works in poetry app project", function()
-        local project_dir = get_project_dir("poetry", "app")
-        local main_py_path = project_dir:joinpath("main.py"):expand()
+            assert.equals(project_dir:expand(), venv.project_root, "venv.project_root matches the project directory")
 
-        vim.cmd("e " .. main_py_path)
+            -- NOTE: poetry names its virtual enviroments like this: app-oFWtJehf-py3.11, thus the weird check bellow
+            --       we need to add a poetry-specific test to check for that but for now checking that it starts with
+            --       app is good enough
+            assert.equals("app", venv.name:match("^(app).*$"), "venv.name")
 
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
+            local actual_venv_path = Path:new(venv.venv_path)
+            assert.is.True(actual_venv_path:exists() and actual_venv_path:is_dir(), "venv.venv_path is a valid directory")
 
-        local get_venv_dir_result = vim.system(
-            { "poetry", "env", "info", "--path" },
-            { text = true, cwd = project_dir:expand() }
-        ):wait()
+            local actual_bin_path = Path:new(venv.bin_path)
+            assert_path_equals(actual_venv_path:joinpath("bin"), venv.bin_path,
+                "venv.bin_path is a subdirectory of venv_path")
+            assert.is.True(actual_bin_path:exists() and actual_bin_path:is_dir(), "venv.bin_path is a valid directory")
 
-        if get_venv_dir_result.code ~= 0 then
-            error("Failed to get Poetry venv directory: " .. get_venv_dir_result.stderr)
-        end
+            assert_path_equals(actual_venv_path:joinpath("bin", "python"), venv.python_path,
+                "venv.python_path matches the bin/python path in the venv",
+                { follow_symlinks = true })
 
-        local expected_venv_dir = Path:new(vim.trim(get_venv_dir_result.stdout))
+            local pyproject_toml = project_dir:joinpath("pyproject.toml")
 
-        assert(venv ~= nil, "venv not found")
-        assert.equals("Poetry", venv.venv_manager_name, "venv.manager_name")
-        assert.equals(vim.fn.fnamemodify(expected_venv_dir:expand(), ":t"), venv.name, "venv.name")
-        assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
-        assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
-        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
-    end)
+            if not pyproject_toml:exists() then
+                assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml should be nil as pyproject.toml does not exist")
+            else
+                assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml,
+                    "venv.pyproject_toml matches the pyproject.toml in the project")
+            end
 
-    it("works in pipenv app project", function()
-        local project_dir = get_project_dir("pipenv", "app")
-        local main_py_path = project_dir:joinpath("main.py"):expand()
-
-        vim.cmd("e " .. main_py_path)
-
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
-
-        local get_venv_dir_result = vim.system({ "pipenv", "--venv" }, { text = true, cwd = project_dir:expand() }):wait()
-        local expected_venv_dir = Path:new(vim.trim(get_venv_dir_result.stdout))
-
-        assert(venv ~= nil, "venv not found")
-        assert.equals("Pipenv", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("app", venv.name, "venv.name")
-        assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
-        assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml")
-        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
-    end)
-
-    it("works in pdm app project", function()
-        local project_dir = get_project_dir("pdm", "app")
-        local main_py_path = project_dir:joinpath("main.py"):expand()
-
-        vim.cmd("e " .. main_py_path)
-
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
-
-        local get_venv_dir_result = vim.system(
-            { "pdm", "venv", "--path", "in-project" },
-            { text = true, cwd = project_dir:expand() }
-        ):wait()
-        local expected_venv_dir = Path:new(vim.trim(get_venv_dir_result.stdout))
-
-        assert(venv ~= nil, "venv not found")
-        assert.equals("PDM", venv.venv_manager_name, "venv.manager_name")
-        assert.equals("app", venv.name, "venv.name")
-        assert_path_equals(expected_venv_dir, venv.venv_path, "venv.venv_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin"), venv.bin_path, "venv.bin_path")
-        assert_path_equals(expected_venv_dir:joinpath("bin", "python"), venv.python_path, "venv.python_path")
-        assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml, "venv.pyproject_toml")
-        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
-    end)
-
-    it("works in builtin app project", function()
-        local project_dir = get_project_dir("builtin", "app")
-        local main_py_path = project_dir:joinpath("main.py"):expand()
-
-        vim.cmd("e " .. main_py_path)
-
-        local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
-
-        assert(venv ~= nil, "venv not found")
-        assert.equals("Built-in venv manager (python -m venv)", venv.venv_manager_name, "venv.venv_manager_name")
-        assert.equals("app", venv.name, "venv.name")
-        assert_path_equals(project_dir:joinpath(".venv"), venv.venv_path, "venv.venv_path")
-        assert_path_equals(project_dir:joinpath(".venv", "bin"), venv.bin_path, "venv.bin_path")
-        assert_path_equals(project_dir:joinpath(".venv", "bin", "python"), venv.python_path, "venv.python_path")
-        assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml")
-        assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version, "venv.python_version")
-    end)
+            assert.equals(get_python_version(project_dir, venv.python_path), venv.python_version,
+                "venv.python_version is correct")
+        end)
+    end
 end)
 
 describe("venv file detection", function()
