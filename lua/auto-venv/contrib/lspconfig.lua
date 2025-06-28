@@ -11,13 +11,12 @@ local set_venv_per_client = {
     pyright = pyright_set_venv,
 }
 
-
 -- TODO: Extract this into a config option, or even better -- make autocommands
 --       for entering and leaving an environment and allow the user to hook into them
 --       ref: https://github.com/akinsho/toggleterm.nvim/blob/e76134e682c1a866e3dfcdaeb691eb7b01068668/lua/toggleterm.lua#L343
 local function post_set_venv_hook(bufnr, client, venv)
     -- TODO: b.py_venv_info should be the same as in M.on_attach
-    if (not venv) or (not venv.pyproject_toml) or (vim.b.py_venv_info == nil) or (not vim.b.py_venv_info.pyproject_toml) then
+    if not venv or not venv.pyproject_toml or (vim.b.py_venv_info == nil) or not vim.b.py_venv_info.pyproject_toml then
         return
     end
 
@@ -37,8 +36,8 @@ local function post_set_venv_hook(bufnr, client, venv)
 
     local line_length = vim.trim(line_length_result.stdout)
 
-    vim.cmd(string.format('setlocal colorcolumn=%s', line_length))
-    vim.cmd(string.format('setlocal textwidth=%s', line_length))
+    vim.cmd(string.format("setlocal colorcolumn=%s", line_length))
+    vim.cmd(string.format("setlocal textwidth=%s", line_length))
 end
 
 -- TODO: Change this to be applied for every file in the project (e.g. yaml when using a linter installed in the venv)
@@ -51,7 +50,7 @@ function M.on_attach(client, bufnr)
         return
     end
 
-    local norm_client_name = client.name:gsub('%-', '_')
+    local norm_client_name = client.name:gsub("%-", "_")
     local set_venv = set_venv_per_client[norm_client_name]
 
     if set_venv == nil then
@@ -91,7 +90,7 @@ function M.on_attach(client, bufnr)
                 set_venv(client, venv)
                 post_set_venv_hook(bufnr, client, venv)
             end
-        end
+        end,
     })
 end
 

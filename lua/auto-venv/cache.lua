@@ -5,7 +5,7 @@ local M = {}
 
 local apply_defaults = require("plenary.tbl").apply_defaults
 
-local NO_VALUE = '__NO_VALUE_SENTINEL__'
+local NO_VALUE = "__NO_VALUE_SENTINEL__"
 
 local cache_vault = {}
 
@@ -40,6 +40,5 @@ M.get_or_update = function(namespace, key, get_value_func, opts)
 
     return new_value
 end
-
 
 return M

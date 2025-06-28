@@ -30,31 +30,31 @@ local function setup_project(venv_manager_id, project_type)
 
     if venv_manager_id == "uv" then
         setup_project_cmds = {
-            { 'uv', 'init', '--vcs', 'none' },
-            { 'uv', 'sync' },
+            { "uv", "init", "--vcs", "none" },
+            { "uv", "sync" },
         }
     elseif venv_manager_id == "poetry" then
         setup_project_cmds = {
-            { 'poetry', 'init',    '--no-interaction' },
-            { 'poetry', 'install', '--no-root' },
-            { 'touch',  'main.py' },
+            { "poetry", "init", "--no-interaction" },
+            { "poetry", "install", "--no-root" },
+            { "touch", "main.py" },
         }
     elseif venv_manager_id == "builtin" then
         setup_project_cmds = {
-            { 'python3', '-m',              'venv', '.venv' },
-            { 'touch',   'main.py' },
-            { 'touch',   'requirements.txt' },
+            { "python3", "-m", "venv", ".venv" },
+            { "touch", "main.py" },
+            { "touch", "requirements.txt" },
         }
     elseif venv_manager_id == "pipenv" then
         setup_project_cmds = {
-            { 'pipenv', 'install', '--python', '3.12' },
-            { 'touch',  'main.py' },
+            { "pipenv", "install", "--python", "3.12" },
+            { "touch", "main.py" },
         }
     elseif venv_manager_id == "pdm" then
         setup_project_cmds = {
-            { 'pdm',   'init',   '--python', '3.12', '--non-interactive', '--no-git' },
-            { 'pdm',   'install' },
-            { 'touch', 'main.py' },
+            { "pdm", "init", "--python", "3.12", "--non-interactive", "--no-git" },
+            { "pdm", "install" },
+            { "touch", "main.py" },
         }
     else
         error("Unknown VENV manager: " .. venv_manager_id)
@@ -104,7 +104,6 @@ local supported_project_types = {
     -- "script",
     -- "monorepo",
 }
-
 
 for venv_manager_id, _ in pairs(venv_managers.all_venv_managers) do
     for _, project_type in ipairs(supported_project_types) do
@@ -166,11 +165,17 @@ describe("venv manager detection", function()
             local venv = auto_venv.get_python_venv(vim.api.nvim_get_current_buf())
 
             assert(venv ~= nil, "venv not found")
-            assert.equals(venv_manager.name, venv.venv_manager_name,
-                "venv.venv_manager_name doesn't match the expected name")
+            assert.equals(
+                venv_manager.name,
+                venv.venv_manager_name,
+                "venv.venv_manager_name doesn't match the expected name"
+            )
 
-            assert.equals(project_dir:expand(), venv.project_root,
-                "venv.project_root doesn't match the project directory")
+            assert.equals(
+                project_dir:expand(),
+                venv.project_root,
+                "venv.project_root doesn't match the project directory"
+            )
 
             -- NOTE: poetry names its virtual enviroments like this: app-oFWtJehf-py3.11, thus the weird check bellow
             --       we need to add a poetry-specific test to check for that but for now checking that it starts with
@@ -178,26 +183,39 @@ describe("venv manager detection", function()
             assert.equals("app", venv.name:match("^(app).*$"), "venv.name doesn't match the expected name")
 
             local actual_venv_path = Path:new(venv.venv_path)
-            assert.is.True(actual_venv_path:exists() and actual_venv_path:is_dir(),
-                "venv.venv_path is not a valid directory")
+            assert.is.True(
+                actual_venv_path:exists() and actual_venv_path:is_dir(),
+                "venv.venv_path is not a valid directory"
+            )
 
             local actual_bin_path = Path:new(venv.bin_path)
-            assert_path_equals(actual_venv_path:joinpath("bin"), venv.bin_path,
-                "venv.bin_path is a subdirectory of venv_path")
-            assert.is.True(actual_bin_path:exists() and actual_bin_path:is_dir(),
-                "venv.bin_path is not a valid directory")
+            assert_path_equals(
+                actual_venv_path:joinpath("bin"),
+                venv.bin_path,
+                "venv.bin_path is a subdirectory of venv_path"
+            )
+            assert.is.True(
+                actual_bin_path:exists() and actual_bin_path:is_dir(),
+                "venv.bin_path is not a valid directory"
+            )
 
-            assert_path_equals(actual_venv_path:joinpath("bin", "python"), venv.python_path,
+            assert_path_equals(
+                actual_venv_path:joinpath("bin", "python"),
+                venv.python_path,
                 "venv.python_path doesn't match the bin/python path in the venv",
-                { follow_symlinks = true })
+                { follow_symlinks = true }
+            )
 
             local pyproject_toml = project_dir:joinpath("pyproject.toml")
 
             if not pyproject_toml:exists() then
                 assert.is.Nil(venv.pyproject_toml, "venv.pyproject_toml should be nil as pyproject.toml does not exist")
             else
-                assert_path_equals(project_dir:joinpath("pyproject.toml"), venv.pyproject_toml,
-                    "venv.pyproject_toml doesn't match the pyproject.toml file in the project")
+                assert_path_equals(
+                    project_dir:joinpath("pyproject.toml"),
+                    venv.pyproject_toml,
+                    "venv.pyproject_toml doesn't match the pyproject.toml file in the project"
+                )
             end
 
             local python_version_res = vim.system({ venv.python_path, "--version" }, { text = true }):wait()
@@ -208,8 +226,11 @@ describe("venv manager detection", function()
 
             local actual_python_version = python_version_res.stdout:match("Python%s+(%d+%.%d+)")
 
-            assert.equals(actual_python_version, venv.python_version,
-                "venv.python_version doesn't match the version of the python binary")
+            assert.equals(
+                actual_python_version,
+                venv.python_version,
+                "venv.python_version doesn't match the version of the python binary"
+            )
 
             local pin_python_version_file = project_dir:joinpath(".python-version")
 
@@ -234,7 +255,11 @@ describe("venv file detection", function()
         vim.cmd("e " .. file_path:expand())
         local bufnr = vim.api.nvim_get_current_buf()
 
-        assert.equals(vim.api.nvim_buf_get_name(bufnr), file_path:expand(), "Buffer name should match the new file path")
+        assert.equals(
+            vim.api.nvim_buf_get_name(bufnr),
+            file_path:expand(),
+            "Buffer name should match the new file path"
+        )
 
         local venv = auto_venv.get_python_venv(bufnr)
 
@@ -256,8 +281,8 @@ describe("venv file detection", function()
     it("is not applied for nofile buffers", function()
         local project_dir = get_project_dir("builtin", "app")
         local file_path = project_dir:joinpath("some_name.py")
-        vim.cmd.tabnew(file_path:expand())                  -- open a new buffer with a name
-        vim.api.nvim_buf_set_option(0, 'buftype', 'nofile') -- Set the buffer type to nofile
+        vim.cmd.tabnew(file_path:expand()) -- open a new buffer with a name
+        vim.api.nvim_buf_set_option(0, "buftype", "nofile") -- Set the buffer type to nofile
         local bufnr = vim.api.nvim_get_current_buf()
         assert.equals(vim.api.nvim_buf_get_name(bufnr), file_path:expand(), "current buffer should have a name")
 

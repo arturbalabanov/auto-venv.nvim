@@ -10,13 +10,13 @@ local utils = require("auto-venv.utils")
 local venv_managers = require("auto-venv.venv_managers")
 
 function M.get_project_venv_python_path(project_root, venv_manager)
-    return cache.get_or_update('get_project_venv_python_path', project_root, function()
+    return cache.get_or_update("get_project_venv_python_path", project_root, function()
         if vim.env.VIRTUAL_ENV then
             if config.get("enable_notifications") then
                 vim.notify("Using activated venv" .. vim.env.VIRTUAL_ENV, vim.log.levels.INFO)
             end
 
-            return Path:new(vim.env.VIRTUAL_ENV):joinpath('bin', 'python'):expand()
+            return Path:new(vim.env.VIRTUAL_ENV):joinpath("bin", "python"):expand()
         end
 
         if venv_manager == nil then
@@ -42,11 +42,11 @@ local function get_venv_name(venv_python_path, project_root)
 
     local venv_dir_path = vim.fn.fnamemodify(venv_python_path, ":h:h")
     local venv_dir_name = vim.fn.fnamemodify(venv_dir_path, ":t")
-    local project_name = vim.fn.fnamemodify(project_root, ':t')
+    local project_name = vim.fn.fnamemodify(project_root, ":t")
 
     -- TODO: If the venv manager supports getting the venv name, use that instead
 
-    if venv_dir_name == '.venv' then
+    if venv_dir_name == ".venv" then
         return project_name
     end
 
@@ -56,7 +56,7 @@ end
 local function get_python_version(python_path)
     utils.debug("Python path: " .. python_path)
 
-    local py_version_result = vim.system({ python_path, '--version' }, { text = true }):wait()
+    local py_version_result = vim.system({ python_path, "--version" }, { text = true }):wait()
 
     if py_version_result.code ~= 0 then
         utils.error("Failed to get Python version: " .. py_version_result.stderr)
@@ -74,25 +74,24 @@ local function get_python_version(python_path)
         return major
     end
 
-    return major .. '.' .. minor
+    return major .. "." .. minor
 end
-
 
 -- TODO: Use filenames instead of buffers
 local function get_python_venv_no_cache(bufnr)
     local file_path = vim.api.nvim_buf_get_name(bufnr)
-    local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
-    local filetype = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+    local buftype = vim.api.nvim_buf_get_option(bufnr, "buftype")
+    local filetype = vim.api.nvim_buf_get_option(bufnr, "filetype")
 
     -- TODO: make this a config option
-    if buftype == 'nofile' or buftype == 'nowrite' or buftype == 'prompt' then
+    if buftype == "nofile" or buftype == "nowrite" or buftype == "prompt" then
         -- This is a special buffer type, e.g. a file tree, etc.
         -- it doesn't make sense to set a venv for it
         utils.debug("Buffer " .. bufnr .. " is of type '" .. buftype .. "', ignoring it for venv detection")
         return nil
     end
 
-    if file_path == nil or file_path == '' then
+    if file_path == nil or file_path == "" then
         -- This happens if the buffer is not saved to a file yet
         -- or it's not associated with a file (e.g. a file tree)
 
@@ -102,7 +101,7 @@ local function get_python_venv_no_cache(bufnr)
         return nil
     end
 
-    if filetype ~= 'python' then
+    if filetype ~= "python" then
         -- only apply venv detection for Python files
         -- TODO: this is a hack to cover annoying edge cases (e.g. git commits), ideally it should be
         --       applied to any file in the project (e.g. yaml files) as they can still depend on the venv
@@ -138,25 +137,24 @@ local function get_python_venv_no_cache(bufnr)
             return nil
         end
 
-        python_path = vim.fn.exepath('python3') or vim.fn.exepath('python') or 'python'
+        python_path = vim.fn.exepath("python3") or vim.fn.exepath("python") or "python"
     end
 
     local venv_bin_path = nil
 
     if venv_python_path ~= nil then
-        venv_bin_path = vim.fn.fnamemodify(venv_python_path, ':h')
+        venv_bin_path = vim.fn.fnamemodify(venv_python_path, ":h")
     end
 
     local venv_path = nil
 
     if venv_bin_path ~= nil then
-        venv_path = vim.fn.fnamemodify(venv_bin_path, ':h')
+        venv_path = vim.fn.fnamemodify(venv_bin_path, ":h")
     end
-
 
     local python_version = get_python_version(python_path)
 
-    local pyproject_toml = Path:new(project_root):joinpath('pyproject.toml')
+    local pyproject_toml = Path:new(project_root):joinpath("pyproject.toml")
 
     if pyproject_toml:exists() then
         pyproject_toml = pyproject_toml:expand()
@@ -182,7 +180,9 @@ function M.get_python_venv(bufnr)
     end
 
     -- TODO: oook, this definitely should be a buffer-local variable. and is?
-    return cache.get_or_update('get_python_venv', bufnr, function() return get_python_venv_no_cache(bufnr) end)
+    return cache.get_or_update("get_python_venv", bufnr, function()
+        return get_python_venv_no_cache(bufnr)
+    end)
 end
 
 -- TODO: rename me to env_local_command_path or something similar

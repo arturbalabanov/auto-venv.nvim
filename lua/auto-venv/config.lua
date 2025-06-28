@@ -1,7 +1,7 @@
 local M = {}
 
-local utils = require('auto-venv.utils')
-local venv_managers = require('auto-venv.venv_managers')
+local utils = require("auto-venv.utils")
+local venv_managers = require("auto-venv.venv_managers")
 
 -- defaults
 M.plugin_opts = {

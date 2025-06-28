@@ -4,11 +4,11 @@ local utils = require("auto-venv.utils")
 local M = {}
 
 local function get_builtin_get_python_executable_name()
-    if vim.fn.exepath('python3') then
-        return 'python3'
+    if vim.fn.exepath("python3") then
+        return "python3"
     end
 
-    return 'python'
+    return "python"
 end
 
 local project_local_command_runner = function(cmd)
@@ -25,49 +25,49 @@ end
 
 M.all_venv_managers = {
     uv = {
-        name = 'uv',
-        executable_name = 'uv',
-        project_root_file = 'uv.lock',
-        get_python_path_func = project_local_command_runner({ 'uv', 'python', 'find' }),
+        name = "uv",
+        executable_name = "uv",
+        project_root_file = "uv.lock",
+        get_python_path_func = project_local_command_runner({ "uv", "python", "find" }),
     },
     pdm = {
         name = "PDM",
-        executable_name = 'pdm',
-        project_root_file = 'pdm.lock',
-        get_python_path_func = project_local_command_runner({ 'pdm', 'venv', '--python', 'in-project' }),
+        executable_name = "pdm",
+        project_root_file = "pdm.lock",
+        get_python_path_func = project_local_command_runner({ "pdm", "venv", "--python", "in-project" }),
     },
     poetry = {
-        name = 'Poetry',
-        executable_name = 'poetry',
-        project_root_file = 'poetry.lock',
-        get_python_path_func = project_local_command_runner({ 'poetry', 'env', 'info', '--executable' }),
+        name = "Poetry",
+        executable_name = "poetry",
+        project_root_file = "poetry.lock",
+        get_python_path_func = project_local_command_runner({ "poetry", "env", "info", "--executable" }),
     },
     pipenv = {
         name = "Pipenv",
-        executable_name = 'pipenv',
-        project_root_file = 'Pipfile.lock',
-        get_python_path_func = project_local_command_runner({ 'pipenv', '--py' }),
+        executable_name = "pipenv",
+        project_root_file = "Pipfile.lock",
+        get_python_path_func = project_local_command_runner({ "pipenv", "--py" }),
     },
     builtin = {
         name = "Built-in venv manager (python -m venv)",
         executable_name = get_builtin_get_python_executable_name(),
         project_root_file = "requirements.txt",
         get_python_path_func = function(project_root)
-            for _, expected_dir_name in ipairs({ '.venv', 'venv', }) do
+            for _, expected_dir_name in ipairs({ ".venv", "venv" }) do
                 local venv_path = Path:new(project_root):joinpath(expected_dir_name)
 
                 if venv_path:is_dir() then
-                    if venv_path:joinpath('bin', 'python'):exists() then
-                        return venv_path:joinpath('bin', 'python'):expand()
+                    if venv_path:joinpath("bin", "python"):exists() then
+                        return venv_path:joinpath("bin", "python"):expand()
                     end
 
-                    if venv_path:joinpath('bin', 'python3'):exists() then
-                        return venv_path:joinpath('bin', 'python3'):expand()
+                    if venv_path:joinpath("bin", "python3"):exists() then
+                        return venv_path:joinpath("bin", "python3"):expand()
                     end
                 end
             end
 
-            return vim.fn.exepath('python3') or vim.fn.exepath('python') or 'python'
+            return vim.fn.exepath("python3") or vim.fn.exepath("python") or "python"
         end,
     },
     -- TODO: add support for rye
@@ -78,7 +78,7 @@ M.all_venv_managers = {
 
 function M.get_venv_manager(file_path)
     -- imporing config here to avoid circular dependency issues
-    local config = require('auto-venv.config')
+    local config = require("auto-venv.config")
 
     local enabled_venv_managers = config.get("managers")
     if enabled_venv_managers == nil or vim.tbl_isempty(enabled_venv_managers) then
